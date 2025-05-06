@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package user;
+option go_package = "github.com/Butternut01/ecommerce-platform/api-gateway/proto/user";  // Укажи правильный путь
+
+service UserService {
+    rpc Register(RegisterRequest) returns (RegisterResponse);
+    rpc Authenticate(AuthenticateRequest) returns (AuthenticateResponse);
+}
+
+message RegisterRequest {
+    string username = 1;
+    string password = 2;
+    string email = 3;
+}
+
+message RegisterResponse {
+    string userId = 1;
+    string message = 2;
+}
+
+message AuthenticateRequest {
+    string username = 1;
+    string password = 2;
+}
+
+message AuthenticateResponse {
+    string userId = 1;
+    string token = 2;
+    string message = 3;
+}

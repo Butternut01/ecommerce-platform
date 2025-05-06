@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+package order;
+option go_package = "github.com/Butternut01/ecommerce-platform/order-service/proto/order";
+
+service OrderService {
+    rpc CreateOrder(CreateOrderRequest) returns (CreateOrderResponse);
+    rpc GetOrder(GetOrderRequest) returns (GetOrderResponse);
+    rpc UpdateOrderStatus(UpdateOrderStatusRequest) returns (UpdateOrderStatusResponse);
+}
+
+message CreateOrderRequest {
+    string user_id = 1;
+    repeated OrderItem items = 2;
+}
+
+message CreateOrderResponse {
+    string order_id = 1;
+    string status = 2;
+}
+
+message GetOrderRequest {
+    string order_id = 1;
+}
+
+message GetOrderResponse {
+    string order_id = 1;
+    string user_id = 2;
+    repeated OrderItem items = 3;
+    string status = 4;
+}
+
+message UpdateOrderStatusRequest {
+    string order_id = 1;
+    string status = 2;
+}
+
+message UpdateOrderStatusResponse {
+    string order_id = 1;
+    string status = 2;
+}
+
+message OrderItem {
+    string product_id = 1;
+    int32 quantity = 2;
+}

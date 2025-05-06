@@ -1,0 +1,134 @@
+services:
+  mongo:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  inventory-service:
+    build:
+      context: ./inventory-service
+      dockerfile: Dockerfile
+    ports:
+      - "50051:50051"
+    depends_on:
+      mongo:
+        condition: service_healthy
+    environment:
+      - MONGO_URI=mongodb://mongo:27017
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "grpc-health-probe", "-addr=:50051"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  order-service:
+    build:
+      context: ./order-service
+      dockerfile: Dockerfile
+    ports:
+      - "50052:50052"
+    depends_on:
+      mongo:
+        condition: service_healthy
+    environment:
+      - MONGO_URI=mongodb://mongo:27017
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "grpc-health-probe", "-addr=:50052"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 15s
+
+  user-service:
+    build:
+      context: ./user-service
+      dockerfile: Dockerfile
+    ports:
+      - "50053:50053"
+    depends_on:
+      mongo:
+        condition: service_healthy
+    environment:
+      - MONGO_URI=mongodb://mongo:27017
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "grpc-health-probe", "-addr=:50053"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 15s
+
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    depends_on:
+      inventory-service:
+        condition: service_healthy
+      order-service:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
+    networks:
+      - app-network
+    environment:
+      - INVENTORY_SERVICE_ADDR=inventory-service:50051
+      - ORDER_SERVICE_ADDR=order-service:50052
+      - USER_SERVICE_ADDR=user-service:50053
+
+  nats:
+    image: nats:latest
+    ports:
+      - "4222:4222"
+    networks:
+      - app-network
+
+  producer-service:
+    build:
+      context: ./producer-service
+      dockerfile: Dockerfile
+    depends_on:
+      - nats
+      - order-service
+    networks:
+      - app-network
+    environment:
+      - NATS_URL=nats://nats:4222
+      - ORDER_SERVICE_ADDR=order-service:50052
+
+  consumer-service:
+    build:
+      context: ./consumer-service
+      dockerfile: Dockerfile
+    depends_on:
+      - nats
+      - inventory-service
+    networks:
+      - app-network
+    environment:
+      - NATS_URL=nats://nats:4222
+      - INVENTORY_SERVICE_ADDR=inventory-service:50051
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  mongodb_data:
